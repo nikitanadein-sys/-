@@ -1,0 +1,24 @@
+/* Tailwind v4 — конфигурация (раньше жила в index.html как Play CDN-скрипт) */
+@import "tailwindcss";
+
+/* Тёмная тема по классу .dark — эквивалент было darkMode: 'class' в CDN-конфиге.
+   Приложение само вешает/снимает класс .dark на <html>, см. App.vue (watch(dark)). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Шрифт по умолчанию — эквивалент было theme.extend.fontFamily.sans */
+  --font-sans: "Inter", "system-ui", "sans-serif";
+
+  /* Кастомные анимации — эквивалент было theme.extend.animation + keyframes */
+  --animate-pop: pop 0.18s ease-out;
+  --animate-fadein: fadein 0.25s ease-out;
+
+  @keyframes pop {
+    0% { transform: scale(0.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes fadein {
+    0% { transform: translateY(6px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+}

@@ -10,3 +10,7 @@ dist/
 # ОС
 .DS_Store
 Thumbs.db
+
+# локальная MCP-конфига (путь к SSH-ключу, IP) — машинно-специфично
+.mcp.json
+.mcp.json.*

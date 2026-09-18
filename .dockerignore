@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.gitignore
+deploy.sh
+start-server.bat
+README.md
+.mcp.json
+.mcp.json.bak-desc
+Dockerfile
+docker-compose.yml
