@@ -1,0 +1,12 @@
+# зависимости
+node_modules/
+
+# сборки
+dist/
+
+# локальные настройки Vite
+*.local
+
+# ОС
+.DS_Store
+Thumbs.db
