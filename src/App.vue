@@ -143,7 +143,7 @@ function cancelEdit() {
       <div>
         <h1
           class="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-          фак задачи
+          Мои задачи
         </h1>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400 capitalize">{{ date }}</p>
       </div>
