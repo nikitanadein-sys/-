@@ -21,7 +21,7 @@ SERVER="${DEPLOY_SERVER:-root@31.76.57.55}"
 IP="${DEPLOY_IP:-31.76.57.55}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/opt/todo-app}"
 STAGE="/root/todo-deploy.tar.gz"
-PORT=3000
+PORT="${DEPLOY_PORT:-80}"
 SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=15)
 
 # Всегда работать из каталога, где лежит этот скрипт (корень проекта).
