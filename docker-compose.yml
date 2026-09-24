@@ -5,6 +5,21 @@ services:
       dockerfile: Dockerfile
     image: todo-app:latest
     container_name: todo-app
-    ports:
-      - "80:80"
+    # Порт наружу не публикуем: 80 и 443 занимает caddy-proxy,
+    # он же терминирует TLS и проксирует dr-shmakova.ru -> todo-app:80.
+    expose:
+      - "80"
+    # SQLite живёт в именованном volume — переживает пересоздание контейнера
+    volumes:
+      - todo-data:/app/data
+    networks:
+      - caddy
     restart: always
+
+volumes:
+  todo-data:
+
+networks:
+  caddy:
+    name: caddy_default
+    external: true

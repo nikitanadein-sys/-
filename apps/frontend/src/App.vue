@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
-
-const KEY = 'todos_v1'
+import { ref, computed, watch, onMounted } from 'vue'
 
 // ---- состояние ----
-const todos = ref(JSON.parse(localStorage.getItem(KEY) || '[]'))
+const todos = ref([])
+const loading = ref(true)
+const loadError = ref(false)
 const newText = ref('')
 const filter = ref('all')
 const editId = ref(null)
@@ -24,8 +24,29 @@ watch(dark, (v) => {
 })
 document.documentElement.classList.toggle('dark', dark.value)
 
-// ---- персистентность (localStorage) ----
-watch(todos, (v) => localStorage.setItem(KEY, JSON.stringify(v)), { deep: true })
+// ---- API (на бою и в dev через vite-прокси всё идёт на /api) ----
+async function api(path, opts = {}) {
+  const res = await fetch(`/api${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  })
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.status === 204 ? null : res.json()
+}
+
+async function loadTodos() {
+  loading.value = true
+  loadError.value = false
+  try {
+    todos.value = await api('/todos')
+  } catch (e) {
+    console.error('load:', e)
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(loadTodos)
 
 // ---- вычисляемые ----
 const total = computed(() => todos.value.length)
@@ -94,31 +115,52 @@ function onDrop(e, t) {
   todos.value.splice(toIdx, 0, item)
   dragId.value = null
   dragOverInfo.value = null
+  // сохраняем новый порядок всего списка в БД
+  api('/todos/reorder', { method: 'PUT', body: JSON.stringify({ ids: todos.value.map((t) => t.id) }) })
+    .catch((e) => console.error('reorder:', e))
 }
 
-// ---- действия ----
-const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random())
-
+// ---- действия (оптимистично меняем UI, потом сохраняем в БД) ----
 function add() {
   const v = newText.value.trim()
   if (!v) return
-  todos.value.unshift({ id: uuid(), text: v, done: false, created: Date.now() })
-  newText.value = ''
-  input.value && input.value.focus()
+  api('/todos', { method: 'POST', body: JSON.stringify({ text: v }) })
+    .then((t) => {
+      todos.value.unshift(t)
+      newText.value = ''
+      input.value && input.value.focus()
+    })
+    .catch((e) => console.error('add:', e))
 }
 function toggle(id) {
   const t = todos.value.find((t) => t.id === id)
-  if (t) t.done = !t.done
+  if (!t) return
+  t.done = !t.done
+  api(`/todos/${id}`, { method: 'PUT', body: JSON.stringify({ done: t.done }) })
+    .catch((e) => {
+      console.error('toggle:', e)
+      t.done = !t.done
+    })
 }
 function remove(id) {
   leavingId.value = id
   setTimeout(() => {
-    todos.value = todos.value.filter((t) => t.id !== id)
-    leavingId.value = null
+    api(`/todos/${id}`, { method: 'DELETE' })
+      .then(() => {
+        todos.value = todos.value.filter((t) => t.id !== id)
+      })
+      .catch((e) => console.error('remove:', e))
+      .finally(() => {
+        leavingId.value = null
+      })
   }, 180)
 }
 function clearDone() {
-  todos.value = todos.value.filter((t) => !t.done)
+  api('/todos/completed', { method: 'DELETE' })
+    .then(() => {
+      todos.value = todos.value.filter((t) => !t.done)
+    })
+    .catch((e) => console.error('clearDone:', e))
 }
 function startEdit(t) {
   editId.value = t.id
@@ -128,8 +170,15 @@ function commitEdit() {
   if (editId.value === null) return
   const t = todos.value.find((t) => t.id === editId.value)
   const v = draft.value.trim()
-  if (t && v) t.text = v
   editId.value = null
+  if (!t || !v || v === t.text) return
+  const old = t.text
+  t.text = v
+  api(`/todos/${t.id}`, { method: 'PUT', body: JSON.stringify({ text: v }) })
+    .catch((e) => {
+      console.error('commitEdit:', e)
+      t.text = old
+    })
 }
 function cancelEdit() {
   editId.value = null
@@ -143,7 +192,7 @@ function cancelEdit() {
       <div>
         <h1
           class="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-          Мои задачи
+          Факер задачи
         </h1>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400 capitalize">{{ date }}</p>
       </div>
@@ -284,12 +333,12 @@ function cancelEdit() {
     <!-- пустое состояние -->
     <div v-show="visible.length === 0" class="text-center py-14 animate-fadein">
       <div class="text-5xl mb-3">🎯</div>
-      <p class="text-slate-500 dark:text-slate-400 font-medium">{{ emptyText }}</p>
+      <p class="text-slate-500 dark:text-slate-400 font-medium">{{ loadError ? 'Не удалось загрузить задачи — backend не отвечает 😕' : emptyText }}</p>
       <p v-show="total === 0" class="text-sm text-slate-400 dark:text-slate-500 mt-1">Введите задачу выше и нажмите Enter</p>
     </div>
 
     <footer class="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">
-      Данные хранятся локально в вашем браузере
+      Задачи хранятся в общей базе (SQLite) на сервере
     </footer>
   </div>
 </template>
